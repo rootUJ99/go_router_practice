@@ -19,7 +19,7 @@ class _LoginState extends State<Login> {
   @override
   void initState() {
     super.initState();
-    if (kIsWeb) {
+    if (!kIsWeb) {
       initDynamicLink();
     }
     // print(route);
@@ -28,20 +28,19 @@ class _LoginState extends State<Login> {
   Future<void> handleLogin(BuildContext context, String value) async {
     final SharedPreferences prefs = await _prefs;
     await prefs.setString("user", value);
-    // context.push('/test2:$value');
-    // print(context.watch<DynamicLinkProvider>().link);
 
-    // final List<String> stack =
-    // context.watch()<DynamicLinkProvider>().routeStack;
-    final stack = await prefs.getStringList('routeStack');
+    final stack = prefs.getStringList('routeStack');
+    if (!mounted) return;
     if (stack == null || stack!.isEmpty) {
       context.go('/restaurant');
       return;
     }
 
-    while (stack!.length > 0) {
-      // String route = context.read()<DynamicLinkProvider>().popRoute();
-      String route = stack!.removeAt(0);
+    for (final (index, route) in stack!.indexed) {
+      if (index == 0) {
+        context.go(route);
+        continue;
+      }
       context.push(route);
     }
     prefs.remove('routeStack');
@@ -57,15 +56,18 @@ class _LoginState extends State<Login> {
     }
 
     FirebaseDynamicLinks.instance.onLink.listen(
-      (pendingDynamicLinkData) {
-        if (pendingDynamicLinkData != null) {
-          final Uri deepLink = pendingDynamicLinkData.link;
-          print(deepLink.path);
-          print('inside onLink condition');
-          setState(() {
-            dynamicPath = deepLink.path;
-          });
-          context.read<DynamicLinkProvider>().setLink(deepLink.path);
+      (pendingDynamicLinkData) async {
+        final Uri deepLink = pendingDynamicLinkData.link;
+        print(deepLink.path);
+        print('inside onLink condition');
+        setState(() {
+          dynamicPath = deepLink.path;
+        });
+        final SharedPreferences prefs = await _prefs;
+        await prefs.setString("user", "guest");
+        await prefs.setString("dynamicLink", deepLink.path);
+        if (mounted) {
+          context.go(deepLink.path);
         }
       },
     );
@@ -74,44 +76,13 @@ class _LoginState extends State<Login> {
   final TextEditingController _controller = TextEditingController();
 
   Widget showRaisedButton() {
-    final link = context.watch<DynamicLinkProvider>().link;
-    if (link == null) return Text('no dynamic links');
+    if (dynamicPath == null) return Text('');
     return ElevatedButton(
         child: const Text('go to link'),
         onPressed: () {
-          context.push(link);
+          context.go(dynamicPath!);
         });
   }
-
-  // Future<Widget> _dialogBuilder(BuildContext context) async{
-  //   final link = context.watch<DynamicLinkProvider>().link;
-
-  //   Widget valu = await showDialog(
-  //     context: context,
-  //     builder: (BuildContext context) {
-  //       if (link == null) return Text('no dynamic links');
-  //       return AlertDialog(
-  //         title: const Text('open a direct link to a path'),
-  //         content: ElevatedButton(
-  //             child: const Text('go to link'),
-  //             onPressed: () {
-  //               context.push(link!);
-  //             }),
-  //         actions: <Widget>[
-  //           TextButton(
-  //             style: TextButton.styleFrom(
-  //               textStyle: Theme.of(context).textTheme.labelLarge,
-  //             ),
-  //             child: const Text('Disable'),
-  //             onPressed: () {
-  //               Navigator.of(context).pop();
-  //             },
-  //           ),
-  //         ],
-  //       );
-  //     });
-  //     return valu;
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -119,38 +90,38 @@ class _LoginState extends State<Login> {
       title: 'GoRouter Test',
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('GoRouter Test'),
+          title: const Text('Login'),
         ),
         body: Center(
-          child: Column(
-            children: [
-              const Text('GoRouter Test'),
-              TextField(
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Enter a user id',
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              children: [
+                TextField(
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    hintText: 'Enter a user id',
+                  ),
+                  controller: _controller,
                 ),
-                controller: _controller,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    child: const Text('Login'),
-                    onPressed: () => handleLogin(context, _controller.text),
-                  ),
-                  ElevatedButton(
-                    child: const Text('Login as guest'),
-                    onPressed: () => handleLogin(context, 'guest'),
-                  ),
-                ],
-              ),
-              Text(dynamicPath ?? 'no link'),
-              Text(context.watch<DynamicLinkProvider>().link ??
-                  'no provider link'),
-              showRaisedButton(),
-              // _dialogBuilder(context);
-            ],
+                SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      child: const Text('Login'),
+                      onPressed: () => handleLogin(context, _controller.text),
+                    ),
+                    ElevatedButton(
+                      child: const Text('Login as guest'),
+                      onPressed: () => handleLogin(context, 'guest'),
+                    ),
+                  ],
+                ),
+                showRaisedButton(),
+                // _dialogBuilder(context);
+              ],
+            ),
           ),
         ),
       ),

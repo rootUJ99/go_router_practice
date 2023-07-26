@@ -7,12 +7,10 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import 'package:flutter_go_router/provider.dart';
-// import 'package:flutter_web_plugins/flutter_web_plugins.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 Future<void> main() async {
-  // if (kIsWeb) {
-  //   usePathUrlStrategy();
-  // }
+  usePathUrlStrategy();
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
